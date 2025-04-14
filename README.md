@@ -1,34 +1,5 @@
 # METAR Processing System Architecture
 
-## Data Flow Diagram
-
-```mermaid
-
-graph LR
-    subgraph "Data Flow"
-        VATSIM[VATSIM API] --> Fetch[Fetch Service]
-        Fetch --> Decode[METAR Decoder]
-        Decode --> Valid{Validate}
-        Valid --> |Yes| Cache[Redis Cache]
-        Valid --> |Yes| Store[PostgreSQL Store]
-        Cache --> |Hit| Return[Return Data]
-        Cache --> |Miss| Fetch
-        Store --> |Query| History[Historical Data]
-    end
-
-    subgraph "Services"
-        MetarService --> CacheService
-        MetarService --> DatabaseService
-        MetarService --> MetarDecoder
-    end
-
-    subgraph "Storage"
-        Redis[(Redis JSON)]
-        Postgres[(PostgreSQL JSONB)]
-    end
-
-```
-
 ## Full Data Flow
 
 ```mermaid
@@ -38,56 +9,88 @@ graph TB
     end
 
     subgraph Processing["METAR Processing"]
-        Fetch[Fetch Raw METAR]
-        Decode[Decode METAR]
-        Validate[Validate Data]
-    end
+        subgraph Fetch["Fetch Layer"]
+            FetchRaw[Fetch Raw METAR]
+            ValidateRaw[Validate Raw Data]
+            CheckCache[Check Redis Cache]
+        end
 
-    subgraph Redis["Redis Layer"]
-        RC[(Redis Cache)]
-        RJ[(Redis JSON Store)]
-        subgraph Redis_Keys["Key Structure"]
-            CK[/"metar:${icao}:raw"/]
-            JK[/"metar:${icao}:${time}:json"/]
-            HK[/"metar:${icao}:history"/]
+        subgraph Decode["Decode Layer"]
+            ParseMetar[Parse METAR]
+            CreateTime[Create Observation Time]
+            FormatData[Format JSON Data]
+        end
+
+        subgraph Update["Update Layer"]
+            CompareData[Compare with Cache]
+            UpdateCache[Update Redis]
+            StoreHistory[Store in PostgreSQL]
         end
     end
 
-    subgraph Postgres["PostgreSQL Layer"]
-        PG[(PostgreSQL)]
-        subgraph Tables["Database Schema"]
-            MT["metar_history
-            - id (SERIAL)
-            - icao (VARCHAR)
-            - time (VARCHAR)
-            - observation_time (TIMESTAMP)
-            - raw_metar (TEXT)
-            - decoded (JSONB)
-            - created_at (TIMESTAMP)"]
+    subgraph Storage["Data Storage"]
+        subgraph Redis["Redis Layer"]
+            RC[(Redis JSON Store)]
+            Keys["Key Format:
+            metar:${icao}:current"]
+            TTL["TTL: 180s"]
+        end
+
+        subgraph Postgres["PostgreSQL Layer"]
+            PG[(PostgreSQL)]
+            Tables["metar_history Table
+            - id SERIAL PK
+            - icao VARCHAR(4)
+            - time VARCHAR(7)
+            - observation_time TIMESTAMPTZ
+            - raw_metar TEXT
+            - decoded JSONB
+            - created_at TIMESTAMPTZ"]
+            Indexes["Indexes:
+            - idx_metar_history_icao
+            - idx_metar_history_time
+            - idx_metar_history_observation
+            - idx_metar_history_jsonb"]
         end
     end
 
-    subgraph DataLifecycle["Data Lifecycle"]
-        Current["Current METAR Data
-        (Redis - 24h TTL)"]
-        Historical["Historical Data
-        (PostgreSQL - Permanent)"]
+    subgraph ErrorHandling["Error Handling"]
+        Retry[Connection Retry]
+        Logging[Winston Logger]
+        Validation[Data Validation]
     end
 
-    %% Flow Connections
-    VATSIM -->|Raw METAR| Fetch
-    Fetch -->|Validation| Validate
-    Validate -->|Success| Decode
-    Decode -->|JSON| RC
-    Decode -->|Full JSON| RJ
-    RC -->|Cache Hit| Current
-    RJ -->|JSON Query| Current
-    Current -->|Expire| Historical
-    Historical -->|Archive| PG
+    %% Main Flow
+    VATSIM -->|HTTP GET| FetchRaw
+    FetchRaw -->|Raw METAR| ValidateRaw
+    ValidateRaw -->|Valid Data| CheckCache
+    CheckCache -->|Cache Miss| ParseMetar
+    ParseMetar -->|Parsed Data| CreateTime
+    CreateTime -->|Timestamped Data| FormatData
+    FormatData -->|JSON Data| CompareData
+    CompareData -->|New Data| UpdateCache
+    CompareData -->|New Data| StoreHistory
 
-    %% Special Notes
-    classDef note fill:#f9f,stroke:#333,stroke-width:2px;
-    class DataLifecycle,Redis_Keys note;
+    %% Cache Flow
+    CheckCache -->|Cache Hit| Return[Return Cached Data]
+    UpdateCache -->|Set with TTL| RC
+
+    %% Database Flow
+    StoreHistory -->|Insert/Update| PG
+
+    %% Error Flows
+    FetchRaw -.->|Error| Retry
+    ParseMetar -.->|Error| Logging
+    UpdateCache -.->|Error| Logging
+    StoreHistory -.->|Error| Logging
+
+    %% Styling
+    classDef storage fill:#f9f,stroke:#333,stroke-width:2px;
+    class RC,PG storage;
+    classDef process fill:#bbf,stroke:#333;
+    class FetchRaw,ParseMetar,CompareData process;
+    classDef error fill:#fdd,stroke:#f66;
+    class Retry,Logging,Validation error;
 ```
 
 ## System Components
