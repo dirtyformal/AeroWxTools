@@ -1,12 +1,21 @@
 services:
   redis:
-    image: redis:latest
+    image: redis/redis-stack-server:latest
     container_name: metar_redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes --save 60 1
+    command: >
+      redis-stack-server
+      --requirepass metar_password
+      --save 60 1
+      --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "metar_password", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   postgres:
     image: postgres:15

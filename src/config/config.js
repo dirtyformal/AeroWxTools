@@ -5,8 +5,8 @@ const AIRPORTS = {
 };
 
 const REDIS = {
-  url: process.env.REDIS_URL || "redis://localhost:6379",
-  expiry: 300, // 5 minutes in seconds
+  url: process.env.REDIS_URL || "redis://default:metar_password@localhost:6379",
+  expiry: 300,
 };
 
 const POSTGRES = {

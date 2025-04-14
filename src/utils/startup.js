@@ -1,42 +1,48 @@
 const pool = require("../db");
+const cacheService = require("../services/cacheService");
 const logger = require("./logging/winston");
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function checkDatabase(retries = 5, delay = 2000) {
+async function checkServices(retries = 10, delay = 2000) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
+      // Check PostgreSQL
       const client = await pool.connect();
       try {
         await client.query("SELECT NOW()");
-
-        const tableCheck = await client.query(`
-                    SELECT EXISTS (
-                        SELECT FROM information_schema.tables 
-                        WHERE table_name = 'metar_history'
-                    )`);
-
-        if (!tableCheck.rows[0].exists) {
-          throw new Error("Required table 'metar_history' not found");
-        }
-
-        logger.info("Database check passed", { attempt });
-        return true;
+        logger.info("PostgreSQL connection successful");
       } finally {
         client.release();
       }
+
+      // Check Redis with detailed error handling
+      try {
+        await cacheService.client.connect();
+        const pingResult = await cacheService.client.ping();
+        logger.info("Redis connection successful", { ping: pingResult });
+        return true;
+      } catch (redisError) {
+        logger.error("Redis connection failed", {
+          attempt,
+          error: redisError.message,
+        });
+        throw redisError;
+      }
     } catch (error) {
       if (attempt === retries) {
-        logger.error("Database check failed after retries", {
+        logger.error("Service check failed after retries", {
           attempts: retries,
           error: error.message,
+          service: error.message.includes("Redis") ? "Redis" : "PostgreSQL",
         });
         throw error;
       }
 
-      logger.info("Waiting for database to be ready", {
+      logger.info("Waiting for services to be ready", {
         attempt,
         nextAttempt: `${delay / 1000}s`,
+        failedService: error.message.includes("Redis") ? "Redis" : "PostgreSQL",
       });
 
       await wait(delay);
@@ -44,4 +50,4 @@ async function checkDatabase(retries = 5, delay = 2000) {
   }
 }
 
-module.exports = { checkDatabase };
+module.exports = { checkServices };

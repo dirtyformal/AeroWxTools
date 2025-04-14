@@ -1,30 +1,42 @@
 const cron = require("node-cron");
 const logger = require("./src/utils/logging/winston");
-const MetarService = require("./src/services/metarService");
+const metarService = require("./src/services/metarService");
+const { checkServices } = require("./src/utils/startup");
 const { AIRPORTS } = require("./src/config/config");
-const { checkDatabase } = require("./src/utils/startup");
+const cacheService = require("./src/services/cacheService");
 
 const updateAllMetars = async () => {
   const airports = Object.values(AIRPORTS);
-  await Promise.all(airports.map((icao) => MetarService.processMetar(icao)));
+  const results = await Promise.allSettled(
+    airports.map((icao) => metarService.processMetar(icao))
+  );
+
+  const succeeded = results.filter((r) => r.status === "fulfilled").length;
+  const failed = results.filter((r) => r.status === "rejected").length;
+
+  logger.info("METAR update complete", {
+    total: airports.length,
+    succeeded,
+    failed,
+  });
 };
 
 const startApplication = async () => {
   try {
-    // Check database connection on startup
-    await checkDatabase();
+    // Check services on startup
+    await checkServices();
 
-    logger.info("Initializing METAR service");
+    logger.info("Starting METAR service", {
+      airports: Object.values(AIRPORTS),
+    });
 
     // Initial update
     await updateAllMetars();
 
-    // Schedule updates every 5 minutes
-    cron.schedule("*/1 * * * *", updateAllMetars);
+    // Schedule updates every minute
+    cron.schedule("* * * * *", updateAllMetars);
 
-    logger.info("METAR monitoring active", {
-      airports: Object.values(AIRPORTS),
-    });
+    logger.info("METAR monitoring active");
   } catch (error) {
     logger.error("Application startup failed", {
       error: error.message,
@@ -32,6 +44,12 @@ const startApplication = async () => {
     process.exit(1);
   }
 };
+
+process.on("SIGTERM", async () => {
+  logger.info("Shutting down...");
+  await cacheService.close();
+  process.exit(0);
+});
 
 // Start the application
 startApplication();

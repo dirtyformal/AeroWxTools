@@ -15,7 +15,7 @@ const client = createClient({
       logger.error("Redis max retries reached", {
         attempt: options.attempt,
       });
-      return undefined; // Stop retrying
+      return undefined;
     }
     return Math.min(options.attempt * 100, 3000);
   },

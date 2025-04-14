@@ -1,60 +1,52 @@
 const { parseMetar } = require("metar-taf-parser");
 const logger = require("../utils/logging/winston");
 
-class MetarDecoder {
-  static formatTimeComponent(num) {
-    return num.toString().padStart(2, "0");
-  }
-
-  static formatTime(components) {
-    return `${this.formatTimeComponent(
-      components.day
-    )}${this.formatTimeComponent(components.hour)}${this.formatTimeComponent(
-      components.minute
-    )}Z`;
-  }
-
-  static decode(rawMetar, icao) {
+const metarDecoder = {
+  decode(rawMetar, icao) {
     try {
-      // Parse time first
-      const timeMatch = rawMetar.match(/(\d{2})(\d{2})(\d{2})Z/);
-      if (!timeMatch) {
-        throw new Error("Invalid METAR time format");
-      }
-
-      const timeComponents = {
-        day: parseInt(timeMatch[1]),
-        hour: parseInt(timeMatch[2]),
-        minute: parseInt(timeMatch[3]),
-      };
-
       const parsed = parseMetar(rawMetar);
 
-      const decodedMetar = {
-        icao,
-        time: this.formatTime(timeComponents), // Will always be DDHHMMZ format
-        wind: {
-          direction: parsed.wind?.direction?.value ?? null,
-          speed: parsed.wind?.speed?.value ?? null,
-        },
-        visibility: parsed.visibility?.value ?? null,
-        temperature: parsed.temperature?.value ?? null,
-        dewPoint: parsed.dewPoint?.value ?? null,
-        altimeter: parsed.altimeter?.value ?? null,
-      };
+      // Get current date components
+      const now = new Date();
+      const currentYear = now.getUTCFullYear();
+      const currentMonth = now.getUTCMonth() + 1;
+
+      // Handle day rollover
+      const metarMonth =
+        parsed.day > now.getUTCDate() ? currentMonth - 1 : currentMonth;
+
+      // Create observation timestamp
+      const observationTime = new Date(
+        Date.UTC(
+          currentYear,
+          metarMonth - 1,
+          parsed.day,
+          parsed.hour,
+          parsed.minute
+        )
+      );
 
       return {
         raw: rawMetar,
-        decoded: decodedMetar,
+        decoded: {
+          ...parsed,
+          icao,
+          time: `${parsed.day.toString().padStart(2, "0")}${parsed.hour
+            .toString()
+            .padStart(2, "0")}${parsed.minute.toString().padStart(2, "0")}Z`,
+          observationTime: observationTime.toISOString(),
+        },
       };
     } catch (error) {
       logger.error("METAR decode failed", {
         action: "decode_failed",
         icao,
         error: error.message,
+        raw: rawMetar,
       });
       return null;
     }
-  }
-}
-module.exports = MetarDecoder;
+  },
+};
+
+module.exports = metarDecoder;
