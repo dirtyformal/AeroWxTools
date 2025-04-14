@@ -60,6 +60,7 @@ graph TB
             - id (SERIAL)
             - icao (VARCHAR)
             - time (VARCHAR)
+            - observation_time (TIMESTAMP)
             - raw_metar (TEXT)
             - decoded (JSONB)
             - created_at (TIMESTAMP)"]
@@ -116,10 +117,11 @@ graph TB
       id SERIAL PRIMARY KEY,
       icao VARCHAR(4) NOT NULL,
       time VARCHAR(7) NOT NULL,
+      observation_time TIMESTAMP WITH TIME ZONE NOT NULL,
       raw_metar TEXT NOT NULL,
       decoded JSONB NOT NULL,
       created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-      CONSTRAINT metar_history_icao_time_key UNIQUE (icao, time)
+      CONSTRAINT metar_history_icao_observation_key UNIQUE (icao, observation_time)
   );
   ```
 - Indexed for efficient querying
@@ -132,8 +134,9 @@ graph TB
   - Full JSON structure
   - Real-time updates
 - **Historical Data (PostgreSQL)**
-  - Long-term storage
-  - Query capabilities
+  - Long-term storage with accurate timestamps
+  - Proper handling of day/month rollovers
+  - Query capabilities by actual observation time
   - Data analysis support
 
 ### 5. Error Handling
