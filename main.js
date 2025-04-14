@@ -3,52 +3,39 @@ const logger = require("./src/utils/logging/winston");
 const { fetchMetar } = require("./src/services/metarService");
 const { AIRPORTS } = require("./src/config/config.js");
 
-async function fetchAirportMetar(airport, icao) {
-  try {
-    const metar = await fetchMetar(icao);
-    logger.info("METAR fetch successful", {
-      action: "fetch_complete",
-      airport,
-      icao,
-    });
-    return metar;
-  } catch (error) {
-    logger.error("METAR fetch failed", {
-      action: "fetch_failed",
-      airport,
-      icao,
-      error: error.message,
-    });
-    throw error;
+const updateAllMetars = async () => {
+  const airports = [
+    { name: "Auckland", icao: AIRPORTS.AUCKLAND },
+    { name: "Wellington", icao: AIRPORTS.WELLINGTON },
+    { name: "Christchurch", icao: AIRPORTS.CHRISTCHURCH },
+  ];
+
+  for (const { name, icao } of airports) {
+    try {
+      const metar = await fetchMetar(icao);
+      if (metar) {
+        // Only log if METAR changed
+        logger.info("METAR update complete", {
+          action: "update_complete",
+          airport: name,
+          icao,
+        });
+      }
+    } catch (error) {
+      logger.error("METAR update failed", {
+        action: "update_failed",
+        airport: name,
+        icao,
+        error: error.message,
+      });
+    }
   }
-}
+};
 
-// Add a results processor
-async function processMetarResults(results) {
-  const [auckland, wellington, christchurch] = results;
-  logger.info("METAR fetch cycle complete", {
-    action: "cycle_complete",
-    fetchedAirports: [
-      AIRPORTS.AUCKLAND,
-      AIRPORTS.WELLINGTON,
-      AIRPORTS.CHRISTCHURCH,
-    ],
-  });
-}
+// Run every minute
+cron.schedule("*/1 * * * *", updateAllMetars);
 
-cron.schedule("* * * * *", async () => {
-  try {
-    const results = await Promise.all([
-      fetchAirportMetar("Auckland", AIRPORTS.AUCKLAND),
-      fetchAirportMetar("Wellington", AIRPORTS.WELLINGTON),
-      fetchAirportMetar("Christchurch", AIRPORTS.CHRISTCHURCH),
-    ]);
-
-    await processMetarResults(results);
-  } catch (error) {
-    logger.error("METAR fetch cycle failed", {
-      action: "cycle_failed",
-      error: error.message,
-    });
-  }
+logger.info("METAR monitoring initialized", {
+  action: "monitor_started",
+  airports: Object.values(AIRPORTS),
 });

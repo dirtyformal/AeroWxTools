@@ -1,18 +1,19 @@
 const { createClient } = require("redis");
+const { parseMetar } = require("metar-taf-parser");
 const logger = require("../utils/logging/winston");
 
 const client = createClient({
   url: "redis://localhost:6379",
   retry_strategy: (options) => {
     if (options.total_retry_time > 1000 * 60 * 60) {
-      logger.error("Redis retry time exhausted", {
-        action: "redis_retry_exhausted",
+      logger.error("Redis connection retry time exceeded", {
+        attempt: options.attempt,
       });
       return new Error("Retry time exhausted");
     }
     if (options.attempt > 10) {
-      logger.error("Redis max retries reached", {
-        action: "redis_max_retries",
+      logger.error("Redis connection max retries reached", {
+        attempt: options.attempt,
       });
       return new Error("Max retries reached");
     }
@@ -20,27 +21,54 @@ const client = createClient({
   },
 });
 
-client.on("error", (err) => logger.error("Redis Client Error", { error: err }));
-client.on("connect", () => logger.info("Redis Client Connected"));
+client.on("error", (err) =>
+  logger.error("Redis connection failed", { reason: err.message })
+);
+client.on("connect", () => logger.info("Redis connected successfully"));
 
-//Connect to Redis
 client.connect();
 
-const METAR_EXPIRY = 300; // 5 Min
+const METAR_EXPIRY = 300; // 5 minutes
 
 const setCachedMetar = async (icao, metar) => {
   try {
+    const currentMetar = await getCachedMetar(icao);
+    if (currentMetar === metar) {
+      logger.debug(`METAR unchanged for ${icao}`);
+      return false; // No change
+    }
+
     await client.setEx(icao, METAR_EXPIRY, metar);
+    logger.debug(`New METAR cached for ${icao}`);
+    return true; // METAR changed
   } catch (error) {
-    logger.error("Redis Set Error", { error: error.message });
+    logger.error(`Cache set failed for ${icao}`, { error: error.message });
+    return false;
   }
 };
 
 const getCachedMetar = async (icao) => {
   try {
-    return await client.get(icao);
+    const rawMetar = await client.get(icao);
+    if (!rawMetar) {
+      logger.debug("Cache miss", {
+        action: "cache_miss",
+        icao,
+      });
+      return null;
+    }
+
+    logger.debug("Cache hit", {
+      action: "cache_hit",
+      icao,
+    });
+    return rawMetar;
   } catch (error) {
-    logger.error("Redis Get Error", { error: error.message });
+    logger.error("Cache get failed", {
+      action: "cache_error",
+      icao,
+      error: error.message,
+    });
     return null;
   }
 };

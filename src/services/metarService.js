@@ -1,22 +1,12 @@
 const https = require("https");
 const { setCachedMetar, getCachedMetar } = require("./redisService");
+const { decodeMetar } = require("./metarDecoder");
 const logger = require("../utils/logging/winston");
 
 const VATSIM_METAR_BASE_URL = "https://metar.vatsim.net";
 
 const fetchMetar = async (icao) => {
   try {
-    // First check cache
-    const cachedMetar = await getCachedMetar(icao);
-    if (cachedMetar) {
-      logger.info("Retrieved METAR from cache", {
-        action: "cache_hit",
-        icao,
-      });
-      return cachedMetar;
-    }
-
-    // If not in cache, fetch from API
     const metar = await new Promise((resolve, reject) => {
       https
         .get(`${VATSIM_METAR_BASE_URL}/${icao}`, (resp) => {
@@ -27,16 +17,24 @@ const fetchMetar = async (icao) => {
         .on("error", (err) => reject(err));
     });
 
-    // Store in cache
-    await setCachedMetar(icao, metar);
-    logger.info("Retrieved METAR from API", {
-      action: "api_fetch",
-      icao,
-    });
+    // Only decode if METAR has changed
+    const hasChanged = await setCachedMetar(icao, metar);
 
-    return metar;
+    if (hasChanged) {
+      logger.info("New METAR retrieved", {
+        action: "new_metar",
+        icao,
+      });
+      return decodeMetar(metar, icao);
+    } else {
+      logger.debug("METAR unchanged", {
+        action: "metar_unchanged",
+        icao,
+      });
+      return null;
+    }
   } catch (error) {
-    logger.error("Failed to fetch METAR", {
+    logger.error("METAR fetch failed", {
       action: "fetch_error",
       icao,
       error: error.message,
