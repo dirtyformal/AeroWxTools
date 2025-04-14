@@ -1,36 +1,39 @@
 const { createClient } = require("redis");
-const { parseMetar } = require("metar-taf-parser");
 const logger = require("../utils/logging/winston");
+const { REDIS } = require("../config/config");
 
 const client = createClient({
-  url: "redis://localhost:6379",
+  url: REDIS.url,
   retry_strategy: (options) => {
     if (options.total_retry_time > 1000 * 60 * 60) {
-      logger.error("Redis connection retry time exceeded", {
+      logger.error("Redis retry time exhausted", {
         attempt: options.attempt,
       });
       return new Error("Retry time exhausted");
     }
     if (options.attempt > 10) {
-      logger.error("Redis connection max retries reached", {
+      logger.error("Redis max retries reached", {
         attempt: options.attempt,
       });
-      return new Error("Max retries reached");
+      return undefined; // Stop retrying
     }
     return Math.min(options.attempt * 100, 3000);
   },
 });
 
-// Only log Redis connection events as INFO
-client.on("error", (err) =>
-  logger.error("Redis connection error", { error: err.message })
-);
-client.on(
-  "connect",
-  () => logger.info("Redis connected") // Simplified connection message
-);
+// Initialize connection
+const initRedis = async () => {
+  try {
+    await client.connect();
+    logger.info("Redis connected successfully");
+  } catch (error) {
+    logger.error("Redis connection failed", { error: error.message });
+    process.exit(1); // Exit if Redis can't connect
+  }
+};
 
-client.connect();
+// Call initialize
+initRedis();
 
 const METAR_EXPIRY = 300; // 5 minutes
 

@@ -1,41 +1,58 @@
 const https = require("https");
-const { setCachedMetar, getCachedMetar } = require("./redisService");
-const { decodeMetar } = require("./metarDecoder");
+const { setCachedMetar } = require("./redisService");
+const { storeMetar } = require("./databaseService");
 const logger = require("../utils/logging/winston");
+const MetarDecoder = require("./metarDecoder");
 
-const VATSIM_METAR_BASE_URL = "https://metar.vatsim.net";
-
-const fetchFromVatsim = async (icao) => {
-  return new Promise((resolve, reject) => {
-    https
-      .get(`${VATSIM_METAR_BASE_URL}/${icao}`, (resp) => {
-        let data = "";
-        resp.on("data", (chunk) => (data += chunk));
-        resp.on("end", () => resolve(data.trim()));
-      })
-      .on("error", (err) => reject(err));
-  });
-};
-
-const fetchMetar = async (icao) => {
-  try {
-    const metar = await fetchFromVatsim(icao);
-    const hasChanged = await setCachedMetar(icao, metar);
-
-    if (hasChanged) {
-      logger.info("New METAR available", { icao });
-      return decodeMetar(metar, icao);
-    }
-
-    logger.debug("No METAR update needed", { icao });
-    return null;
-  } catch (error) {
-    logger.error("METAR fetch failed", {
-      icao,
-      error: error.message,
+class MetarService {
+  static async fetchFromVatsim(icao) {
+    return new Promise((resolve, reject) => {
+      https
+        .get(`https://metar.vatsim.net/${icao}`, (resp) => {
+          let data = "";
+          resp.on("data", (chunk) => (data += chunk));
+          resp.on("end", () => resolve(data.trim()));
+        })
+        .on("error", reject);
     });
-    throw error;
   }
-};
 
-module.exports = { fetchMetar };
+  static async processMetar(icao) {
+    try {
+      const rawMetar = await this.fetchFromVatsim(icao);
+      if (!rawMetar) {
+        throw new Error("No METAR data received");
+      }
+
+      const decodedResult = MetarDecoder.decode(rawMetar, icao);
+      if (!decodedResult?.decoded) {
+        throw new Error("Failed to decode METAR");
+      }
+
+      // Explicitly destructure for clarity
+      const { decoded, raw } = decodedResult;
+
+      await Promise.all([
+        setCachedMetar(icao, raw),
+        storeMetar(icao, decodedResult), // Pass the entire result object
+      ]);
+
+      logger.info("METAR processed successfully", {
+        action: "metar_processed",
+        icao,
+        time: decoded.time,
+      });
+
+      return decodedResult;
+    } catch (error) {
+      logger.error("METAR processing failed", {
+        action: "process_failed",
+        icao,
+        error: error.message,
+      });
+      return null;
+    }
+  }
+}
+
+module.exports = MetarService;

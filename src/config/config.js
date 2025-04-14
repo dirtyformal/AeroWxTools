@@ -9,7 +9,14 @@ const REDIS = {
   expiry: 300, // 5 minutes in seconds
 };
 
+const POSTGRES = {
+  url:
+    process.env.DATABASE_URL ||
+    "postgresql://metar_user:metar_password@localhost:5432/vatsim_metar",
+};
+
 module.exports = {
   AIRPORTS,
   REDIS,
+  POSTGRES,
 };

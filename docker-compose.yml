@@ -7,17 +7,27 @@ services:
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes --save 60 1
-    restart: unless-stopped
+
+  postgres:
+    image: postgres:15
+    container_name: metar_postgres
+    environment:
+      POSTGRES_DB: vatsim_metar
+      POSTGRES_USER: metar_user
+      POSTGRES_PASSWORD: metar_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./src/db/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "pg_isready -U metar_user -d vatsim_metar"]
       interval: 10s
       timeout: 5s
-      retries: 3
-    logging:
-      options:
-        max-size: "10m"
-        max-file: "3"
+      retries: 5
 
 volumes:
   redis_data:
     name: metar_redis_data
+  postgres_data:
+    name: metar_postgres_data
