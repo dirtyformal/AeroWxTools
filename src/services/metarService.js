@@ -19,38 +19,39 @@ class MetarService {
 
   static async processMetar(icao) {
     try {
-      // Check cache first
-      const cached = await cacheService.getLatestMetar(icao);
-      if (cached) {
-        logger.debug("METAR cache hit", { icao });
-        return cached;
-      }
-
-      // Fetch new METAR
+      // Fetch new METAR first
       const rawMetar = await this.fetchFromVatsim(icao);
       if (!rawMetar) {
         throw new Error("No METAR data received");
       }
 
-      // Decode METAR
+      // Decode new METAR
       const result = metarDecoder.decode(rawMetar, icao);
       if (!result?.decoded) {
         throw new Error("Failed to decode METAR");
       }
 
-      // Store in cache and database
-      await Promise.all([
-        cacheService.setMetar(icao, result),
-        databaseService.storeMetar(icao, result),
-      ]);
+      // Compare with cache and update if needed
+      const cached = await cacheService.getLatestMetar(icao);
+      if (!cached || cached.raw !== rawMetar) {
+        await Promise.all([
+          cacheService.setMetar(icao, result),
+          databaseService.storeMetar(icao, result),
+        ]);
 
-      logger.info("METAR processed successfully", {
-        action: "metar_processed",
+        logger.info("New METAR processed", {
+          action: "metar_updated",
+          icao,
+          time: result.decoded.time,
+        });
+        return result;
+      }
+
+      logger.debug("METAR unchanged", {
+        action: "metar_unchanged",
         icao,
-        time: result.decoded.time,
       });
-
-      return result;
+      return cached;
     } catch (error) {
       logger.error("METAR processing failed", {
         action: "process_failed",

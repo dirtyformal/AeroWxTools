@@ -48,16 +48,24 @@ class CacheService {
     }
   }
 
-  async setMetar(icao, data, ttl = 24 * 60 * 60) {
+  async setMetar(icao, data, ttl = 180) {
+    // 5 minutes TTL
     await this.ensureConnection();
     try {
-      const key = `metar:${icao}:${data.decoded.time}`;
+      const key = `metar:${icao}:current`;
       await this.client.json.set(key, "$", data);
       await this.client.expire(key, ttl);
-    } catch (error) {
-      logger.error("Redis set failed", {
-        error: error.message,
+
+      logger.debug("Cache updated", {
+        action: "cache_set",
         icao,
+        time: data.decoded.time,
+      });
+    } catch (error) {
+      logger.error("Cache set failed", {
+        action: "cache_error",
+        icao,
+        error: error.message,
       });
       throw error;
     }
@@ -66,14 +74,21 @@ class CacheService {
   async getLatestMetar(icao) {
     await this.ensureConnection();
     try {
-      const keys = await this.client.keys(`metar:${icao}:*`);
-      if (!keys.length) return null;
-      const latestKey = keys.sort().pop();
-      return this.client.json.get(latestKey);
+      const key = `metar:${icao}:current`;
+      const data = await this.client.json.get(key);
+
+      if (data) {
+        logger.debug("Cache hit", {
+          action: "cache_hit",
+          icao,
+        });
+      }
+      return data;
     } catch (error) {
-      logger.error("Redis get failed", {
-        error: error.message,
+      logger.error("Cache get failed", {
+        action: "cache_error",
         icao,
+        error: error.message,
       });
       return null;
     }
