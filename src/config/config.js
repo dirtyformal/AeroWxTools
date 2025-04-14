@@ -4,5 +4,12 @@ const AIRPORTS = {
   CHRISTCHURCH: "NZCH",
 };
 
-module.exports = { AIRPORTS
+const REDIS = {
+  url: process.env.REDIS_URL || "redis://localhost:6379",
+  expiry: 300, // 5 minutes in seconds
+};
+
+module.exports = {
+  AIRPORTS,
+  REDIS,
 };

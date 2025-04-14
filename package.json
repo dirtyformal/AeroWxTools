@@ -3,13 +3,20 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "node main.js"
+    "start": "node main.js",
+    "dev": "docker-compose up -d && node main.js",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "docker:restart": "docker-compose restart",
+    "clean": "docker-compose down -v"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "fetch": "^1.1.0",
     "https": "^1.0.0",
     "metar-taf-parser": "^9.1.2",
     "node-cron": "^3.0.3",
