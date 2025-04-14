@@ -14,7 +14,6 @@ const updateAllMetars = async () => {
     try {
       const metar = await fetchMetar(icao);
       if (metar) {
-        // Only log if METAR changed
         logger.info("METAR update complete", {
           action: "update_complete",
           airport: name,
@@ -32,10 +31,27 @@ const updateAllMetars = async () => {
   }
 };
 
-// Run every minute
-cron.schedule("*/1 * * * *", updateAllMetars);
+// Initial fetch on startup
+const initializeMetars = async () => {
+  logger.info("Starting initial METAR fetch", {
+    action: "initial_fetch",
+  });
+  await updateAllMetars();
 
-logger.info("METAR monitoring initialized", {
-  action: "monitor_started",
-  airports: Object.values(AIRPORTS),
+  // Start the CRON after initial fetch
+  cron.schedule("*/1 * * * *", updateAllMetars);
+
+  logger.info("METAR monitoring initialized", {
+    action: "monitor_started",
+    airports: Object.values(AIRPORTS),
+  });
+};
+
+// Start the service
+initializeMetars().catch((error) => {
+  logger.error("Service initialization failed", {
+    action: "init_failed",
+    error: error.message,
+  });
+  process.exit(1);
 });
