@@ -33,16 +33,12 @@ const updateAllMetars = async () => {
 
 // Initial fetch on startup
 const initializeMetars = async () => {
-  logger.info("Starting initial METAR fetch", {
-    action: "initial_fetch",
-  });
+  logger.info("Initializing METAR service");
   await updateAllMetars();
 
-  // Start the CRON after initial fetch
   cron.schedule("*/1 * * * *", updateAllMetars);
 
-  logger.info("METAR monitoring initialized", {
-    action: "monitor_started",
+  logger.info("METAR monitoring active", {
     airports: Object.values(AIRPORTS),
   });
 };

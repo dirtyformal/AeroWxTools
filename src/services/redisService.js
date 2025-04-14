@@ -21,10 +21,14 @@ const client = createClient({
   },
 });
 
+// Only log Redis connection events as INFO
 client.on("error", (err) =>
-  logger.error("Redis connection failed", { reason: err.message })
+  logger.error("Redis connection error", { error: err.message })
 );
-client.on("connect", () => logger.info("Redis connected successfully"));
+client.on(
+  "connect",
+  () => logger.info("Redis connected") // Simplified connection message
+);
 
 client.connect();
 
@@ -34,18 +38,15 @@ const setCachedMetar = async (icao, metar) => {
   try {
     const currentMetar = await getCachedMetar(icao);
     if (currentMetar === metar) {
-      return false; // No change
+      logger.debug("METAR unchanged", { icao }); // Debug level for cache ops
+      return false;
     }
 
     await client.setEx(icao, METAR_EXPIRY, metar);
-    logger.debug("METAR cached", {
-      action: "cache_set",
-      icao,
-    });
-    return true; // METAR changed
+    logger.debug("METAR cached", { icao });
+    return true;
   } catch (error) {
-    logger.error("Cache set failed", {
-      action: "cache_error",
+    logger.error("Cache operation failed", {
       icao,
       error: error.message,
     });

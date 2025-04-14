@@ -19,25 +19,18 @@ const fetchFromVatsim = async (icao) => {
 
 const fetchMetar = async (icao) => {
   try {
-    const cachedMetar = await getCachedMetar(icao);
+    const metar = await fetchFromVatsim(icao);
+    const hasChanged = await setCachedMetar(icao, metar);
 
-    if (!cachedMetar) {
-      logger.debug("Cache miss", { action: "cache_miss", icao });
-
-      const metar = await fetchFromVatsim(icao);
-      const hasChanged = await setCachedMetar(icao, metar);
-
-      if (hasChanged) {
-        logger.info("New METAR retrieved", { action: "new_metar", icao });
-        return decodeMetar(metar, icao);
-      }
+    if (hasChanged) {
+      logger.info("New METAR available", { icao });
+      return decodeMetar(metar, icao);
     }
 
-    logger.debug("METAR unchanged", { action: "metar_unchanged", icao });
+    logger.debug("No METAR update needed", { icao });
     return null;
   } catch (error) {
     logger.error("METAR fetch failed", {
-      action: "fetch_error",
       icao,
       error: error.message,
     });
