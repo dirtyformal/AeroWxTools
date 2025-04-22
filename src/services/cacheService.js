@@ -48,7 +48,7 @@ class CacheService {
     }
   }
 
-  async setMetar(icao, data, ttl = 180) {
+  async setMetar(icao, data, ttl = 240) {
     // 5 minutes TTL
     await this.ensureConnection();
     try {
