@@ -9,8 +9,7 @@
     "clean": "docker-compose down -v",
     "db:logs": "docker logs metar_postgres",
     "db:psql": "docker exec -it metar_postgres psql -U metar_user -d vatsim_metar",
-    "migrate": "node src/db/migrate.js",
-    "clear:logs": "rimraf logs/*"
+    "migrate": "node src/db/migrate.js"
   },
   "keywords": [],
   "author": "",
