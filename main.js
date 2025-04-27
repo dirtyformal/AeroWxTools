@@ -62,7 +62,7 @@ const startApplication = async () => {
     await updateAllMetars();
 
     // Schedule updates every 2 minutes
-    cron.schedule("*/2 * * * *", updateAllMetars);
+    cron.schedule("*/5 * * * *", updateAllMetars);
 
     logger.info("METAR monitoring active");
   } catch (error) {
