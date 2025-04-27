@@ -13,6 +13,7 @@ const {
   lastDataImport,
 } = require("./src/utils/monitoring/metrics");
 const databaseService = require("./src/services/databaseService");
+const healthService = require("./src/services/healthService");
 const aerodromes = require("./src/config/aerodromes.json").AERODROMES;
 
 // Expose metrics endpoint
@@ -84,6 +85,7 @@ const startApplication = async () => {
     cron.schedule("*/5 * * * *", updateAllMetars);
 
     logger.info("METAR monitoring active");
+    await healthService.checkVatsimHealth();
   } catch (error) {
     logger.error("Application startup failed", {
       error: error.message,
@@ -100,6 +102,9 @@ const startApplication = async () => {
     process.exit(1);
   }
 };
+
+// Periodic Health Checks to check VATSIM status
+cron.schedule("*/5 * * * *", healthService.checkVatsimHealth);
 
 process.on("SIGTERM", async () => {
   logger.info("Shutting down...");
