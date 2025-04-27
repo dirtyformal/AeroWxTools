@@ -2,7 +2,6 @@ const cron = require("node-cron");
 const logger = require("./src/utils/logging/winston");
 const metarService = require("./src/services/metarService");
 const { checkServices } = require("./src/utils/startup");
-const { AIRPORTS } = require("./src/config/config");
 const cacheService = require("./src/services/cacheService");
 const express = require("express");
 const {
@@ -11,6 +10,7 @@ const {
   metarUpdateCount,
   serviceStatus,
 } = require("./src/utils/monitoring/metrics");
+const aerodromes = require("./src/config/aerodromes.json").AERODROMES;
 
 // Expose metrics endpoint
 const app = express();
@@ -23,7 +23,7 @@ app.listen(3001, () => {
 });
 
 const updateAllMetars = async () => {
-  const airports = Object.values(AIRPORTS);
+  const airports = Object.values(aerodromes); // Fetch all aerodrome ICAO codes
   const timer = metarUpdateDuration.startTimer(); // Start timer for update duration
 
   const results = await Promise.allSettled(
@@ -55,7 +55,7 @@ const startApplication = async () => {
     serviceStatus.set({ service: "Redis" }, 1);
 
     logger.info("Starting METAR service", {
-      airports: Object.values(AIRPORTS),
+      aerodromes: Object.keys(aerodromes), // Log aerodrome names
     });
 
     // Initial update

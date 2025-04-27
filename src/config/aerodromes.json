@@ -1,0 +1,27 @@
+{
+  "AERODROMES": {
+    "AUCKLAND": "NZAA",
+    "WHENUAPAI": "NZWP",
+    "HAMILTON": "NZHN",
+    "NEW PLYMOUTH": "NZNP",
+    "TAURANGA": "NZTG",
+    "ROTORUA": "NZRO",
+    "TAUPO": "NZAP",
+    "PALMERSTON NORTH": "NZPM",
+    "OHAKEA": "NZOH",
+    "PARAPARAUMU": "NZPP",
+    "NAPIER": "NZNP",
+    "GISBOURNE": "NZGS",
+    "WELLINGTON": "NZWN",
+    "WOODBOURNE": "NZWB",
+    "NELSON": "NZNS",
+    "WESTPORT": "NZWS",
+    "HOKITIKA": "NZHK",
+    "MILFORD": "NZMF",
+    "INVERCARGILL": "NZNV",
+    "DUNEDIN": "NZDN",
+    "TIMARU": "NZTU",
+    "CHRISTCHURCH": "NZCH",
+    "KAIKOURA": "NZKI"
+  }
+}

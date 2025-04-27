@@ -1,9 +1,3 @@
-const AIRPORTS = {
-  AUCKLAND: "NZAA",
-  WELLINGTON: "NZWN",
-  CHRISTCHURCH: "NZCH",
-};
-
 const REDIS = {
   url: process.env.REDIS_URL || "redis://default:metar_password@localhost:6379",
   expiry: 300,
@@ -16,7 +10,6 @@ const POSTGRES = {
 };
 
 module.exports = {
-  AIRPORTS,
   REDIS,
   POSTGRES,
 };
