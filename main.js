@@ -10,7 +10,9 @@ const {
   metarUpdateCount,
   serviceStatus,
   lastDataFetch,
+  lastDataImport,
 } = require("./src/utils/monitoring/metrics");
+const databaseService = require("./src/services/databaseService");
 const aerodromes = require("./src/config/aerodromes.json").AERODROMES;
 
 // Expose metrics endpoint
@@ -43,6 +45,16 @@ const updateAllMetars = async () => {
     const now = Math.floor(Date.now() / 1000); // Current timestamp in seconds
     lastDataFetch.set(now); // Update the "last data fetch" metric
     logger.info("Last data fetch timestamp updated", { timestamp: now });
+
+    // Fetch and log the last data import time
+    const lastImportTime = await databaseService.getLastDataImportTime();
+    if (lastImportTime) {
+      const lastImportTimestamp = Math.floor(
+        new Date(lastImportTime).getTime() / 1000
+      );
+      lastDataImport.set(lastImportTimestamp); // Update the "last data import" metric
+      logger.info("Last data import timestamp updated", { lastImportTime });
+    }
   }
 
   logger.info("METAR update complete", {

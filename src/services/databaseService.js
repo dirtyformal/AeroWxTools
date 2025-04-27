@@ -48,6 +48,23 @@ const databaseService = {
       client.release();
     }
   },
+
+  async getLastDataImportTime() {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        `SELECT MAX(created_at) AS last_import_time FROM metar_history`
+      );
+      return result.rows[0]?.last_import_time || null;
+    } catch (error) {
+      logger.error("Failed to fetch last data import time", {
+        error: error.message,
+      });
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
 };
 
 module.exports = databaseService;
