@@ -1,6 +1,7 @@
+const path = require("path");
 const winston = require("winston");
+const DailyRotateFile = require("winston-daily-rotate-file");
 
-// Custom format for consistent log structure
 const logFormat = winston.format.printf(
   ({ level, message, timestamp, ...meta }) => {
     let metaStr = Object.keys(meta).length ? JSON.stringify(meta, null, 2) : "";
@@ -8,7 +9,10 @@ const logFormat = winston.format.printf(
   }
 );
 
+const isProduction = process.env.NODE_ENV === "production";
+
 const logger = winston.createLogger({
+  level: isProduction ? "info" : "debug",
   format: winston.format.combine(
     winston.format.timestamp({
       format: "YYYY-MM-DD HH:mm:ss",
@@ -16,29 +20,38 @@ const logger = winston.createLogger({
     logFormat
   ),
   transports: [
-    // Error logs
-    new winston.transports.File({
-      filename: "error.log",
+    new DailyRotateFile({
+      filename: path.join(__dirname, "../../logs/error-%DATE%.log"),
       level: "error",
+      datePattern: "YYYY-MM-DD",
+      maxSize: "20m",
+      maxFiles: "14d",
     }),
-    // Info and above logs
-    new winston.transports.File({
-      filename: "info.log",
+    new DailyRotateFile({
+      filename: path.join(__dirname, "../../logs/info-%DATE%.log"),
       level: "info",
+      datePattern: "YYYY-MM-DD",
+      maxSize: "20m",
+      maxFiles: "14d",
     }),
-    // Debug and above logs
-    new winston.transports.File({
-      filename: "debug.log",
+    new DailyRotateFile({
+      filename: path.join(__dirname, "../../logs/debug-%DATE%.log"),
       level: "debug",
+      datePattern: "YYYY-MM-DD",
+      maxSize: "20m",
+      maxFiles: "14d",
     }),
-    // Console output with colors (info level only)
-    new winston.transports.Console({
-      level: "info",
-      format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.simple()
-      ),
-    }),
+    ...(isProduction
+      ? []
+      : [
+          new winston.transports.Console({
+            level: "debug",
+            format: winston.format.combine(
+              winston.format.colorize(),
+              winston.format.simple()
+            ),
+          }),
+        ]),
   ],
 });
 
