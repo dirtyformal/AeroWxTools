@@ -9,6 +9,7 @@ const {
   metarUpdateDuration,
   metarUpdateCount,
   serviceStatus,
+  lastDataFetch,
 } = require("./src/utils/monitoring/metrics");
 const aerodromes = require("./src/config/aerodromes.json").AERODROMES;
 
@@ -37,6 +38,12 @@ const updateAllMetars = async () => {
   metarUpdateCount.inc({ status: "succeeded" }, succeeded);
   metarUpdateCount.inc({ status: "failed" }, failed);
   timer({ status: failed > 0 ? "failed" : "succeeded" }); // Stop timer with status label
+
+  if (failed === 0) {
+    const now = Math.floor(Date.now() / 1000); // Current timestamp in seconds
+    lastDataFetch.set(now); // Update the "last data fetch" metric
+    logger.info("Last data fetch timestamp updated", { timestamp: now });
+  }
 
   logger.info("METAR update complete", {
     total: airports.length,

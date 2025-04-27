@@ -25,14 +25,21 @@ const serviceStatus = new client.Gauge({
   labelNames: ["service"],
 });
 
+const lastDataFetch = new client.Gauge({
+  name: "last_data_fetch_timestamp",
+  help: "Timestamp of the last successful METAR data fetch (in seconds since epoch)",
+});
+
 // Register custom metrics
 register.registerMetric(metarUpdateDuration);
 register.registerMetric(metarUpdateCount);
 register.registerMetric(serviceStatus);
+register.registerMetric(lastDataFetch);
 
 module.exports = {
   register,
   metarUpdateDuration,
   metarUpdateCount,
   serviceStatus,
+  lastDataFetch,
 };
