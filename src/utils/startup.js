@@ -1,3 +1,4 @@
+const axios = require("axios");
 const pool = require("../db");
 const cacheService = require("../services/cacheService");
 const logger = require("./logging/winston");
@@ -24,7 +25,6 @@ async function checkServices(retries = 10, delay = 2000) {
         const pingResult = await cacheService.client.ping();
         logger.info("Redis connection successful", { ping: pingResult });
         serviceStatus.set({ service: "Redis" }, 1); // Set Redis status to up
-        return true;
       } catch (redisError) {
         logger.error("Redis connection failed", {
           attempt,
@@ -33,15 +33,50 @@ async function checkServices(retries = 10, delay = 2000) {
         serviceStatus.set({ service: "Redis" }, 0); // Set Redis status to down
         throw redisError;
       }
+
+      // Check VATSIM
+      try {
+        const response = await axios.get("https://metar.vatsim.net/metar.php");
+        if (response.status === 200) {
+          logger.info("VATSIM endpoint is healthy!");
+          serviceStatus.set({ service: "VATSIM" }, 1); // Set VATSIM status to up
+        } else {
+          logger.warn("VATSIM endpoint returned non-200 status", {
+            status: response.status,
+          });
+          serviceStatus.set({ service: "VATSIM" }, 0); // Set VATSIM status to down
+          throw new Error(`VATSIM returned status ${response.status}`);
+        }
+      } catch (vatsimError) {
+        logger.error("VATSIM connection failed", {
+          attempt,
+          error: vatsimError.message,
+        });
+        serviceStatus.set({ service: "VATSIM" }, 0); // Set VATSIM status to down
+        throw vatsimError;
+      }
+
+      // If all checks pass, return true
+      return true;
     } catch (error) {
       if (attempt === retries) {
         logger.error("Service check failed after retries", {
           attempts: retries,
           error: error.message,
-          service: error.message.includes("Redis") ? "Redis" : "PostgreSQL",
+          service: error.message.includes("Redis")
+            ? "Redis"
+            : error.message.includes("PostgreSQL")
+            ? "PostgreSQL"
+            : "VATSIM",
         });
         serviceStatus.set(
-          { service: error.message.includes("Redis") ? "Redis" : "PostgreSQL" },
+          {
+            service: error.message.includes("Redis")
+              ? "Redis"
+              : error.message.includes("PostgreSQL")
+              ? "PostgreSQL"
+              : "VATSIM",
+          },
           0
         ); // Set service status to down
         throw error;
