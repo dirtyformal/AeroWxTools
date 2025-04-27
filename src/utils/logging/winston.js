@@ -21,21 +21,21 @@ const logger = winston.createLogger({
   ),
   transports: [
     new DailyRotateFile({
-      filename: path.join(__dirname, "../../logs/error-%DATE%.log"), // Update path
+      filename: path.join(__dirname, "../../../logs/error-%DATE%.log"),
       level: "error",
       datePattern: "YYYY-MM-DD",
       maxSize: "20m",
       maxFiles: "14d",
     }),
     new DailyRotateFile({
-      filename: path.join(__dirname, "../../logs/info-%DATE%.log"), // Update path
+      filename: path.join(__dirname, "../../../logs/info-%DATE%.log"),
       level: "info",
       datePattern: "YYYY-MM-DD",
       maxSize: "20m",
       maxFiles: "14d",
     }),
     new DailyRotateFile({
-      filename: path.join(__dirname, "../../logs/debug-%DATE%.log"), // Update path
+      filename: path.join(__dirname, "../../../logs/debug-%DATE%.log"),
       level: "debug",
       datePattern: "YYYY-MM-DD",
       maxSize: "20m",
