@@ -1,5 +1,5 @@
 const { parseMetar } = require("metar-taf-parser");
-const logger = require("../utils/logging/winston");
+const logger = require("../../utils/logging/winston");
 
 const metarDecoder = {
   decode(rawMetar, icao) {

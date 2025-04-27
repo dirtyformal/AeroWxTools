@@ -1,13 +1,13 @@
-const logger = require("../utils/logging/winston");
+const logger = require("../../utils/logging/winston");
 const {
   metarUpdateDuration,
   metarUpdateCount,
   lastDataFetch,
   lastDataImport,
-} = require("../utils/monitoring/metrics");
-const databaseService = require("./databaseService");
+} = require("../../utils/monitoring/metrics");
+const databaseService = require("../database/databaseService");
 const metarService = require("./metarService");
-const aerodromes = require("../config/aerodromes.json").AERODROMES;
+const aerodromes = require("../../config/aerodromes.json").AERODROMES;
 
 const updateAllMetars = async () => {
   const airports = Object.values(aerodromes);

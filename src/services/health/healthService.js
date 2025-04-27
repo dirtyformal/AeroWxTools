@@ -1,6 +1,6 @@
 const axios = require("axios");
-const logger = require("../utils/logging/winston");
-const { serviceStatus } = require("../utils/monitoring/metrics");
+const logger = require("../../utils/logging/winston");
+const { serviceStatus } = require("../../utils/monitoring/metrics");
 
 const healthService = {
   async checkVatsimHealth() {

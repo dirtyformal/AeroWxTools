@@ -1,6 +1,6 @@
 const axios = require("axios");
 const pool = require("../db");
-const cacheService = require("../services/cacheService");
+const { client: redisClient } = require("../cache/redisClient");
 const logger = require("./logging/winston");
 const { serviceStatus } = require("./monitoring/metrics");
 
@@ -14,23 +14,22 @@ async function checkServices(retries = 10, delay = 2000) {
       try {
         await client.query("SELECT NOW()");
         logger.info("PostgreSQL connection successful");
-        serviceStatus.set({ service: "PostgreSQL" }, 1); // Set PostgreSQL status to up
+        serviceStatus.set({ service: "PostgreSQL" }, 1);
       } finally {
         client.release();
       }
 
       // Check Redis
       try {
-        await cacheService.client.connect();
-        const pingResult = await cacheService.client.ping();
+        const pingResult = await redisClient.ping();
         logger.info("Redis connection successful", { ping: pingResult });
-        serviceStatus.set({ service: "Redis" }, 1); // Set Redis status to up
+        serviceStatus.set({ service: "Redis" }, 1);
       } catch (redisError) {
         logger.error("Redis connection failed", {
           attempt,
           error: redisError.message,
         });
-        serviceStatus.set({ service: "Redis" }, 0); // Set Redis status to down
+        serviceStatus.set({ service: "Redis" }, 0);
         throw redisError;
       }
 

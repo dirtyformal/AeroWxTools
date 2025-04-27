@@ -1,6 +1,11 @@
-const { checkServices } = require("../utils/startup");
+const logger = require("../../utils/logging/winston");
+const { checkServices } = require("../../utils/startup");
 const healthService = require("./healthService");
-const logger = require("../utils/logging/winston");
+
+/*
+ *  healthChecker.js manages the startup and periodic checks for all external services.
+ *  halthService.js is where all of the health logic for endpoints are stored.
+ */
 
 const performStartupChecks = async () => {
   await checkServices();

@@ -1,5 +1,5 @@
-const pool = require("../db");
-const logger = require("../utils/logging/winston");
+const pool = require("../../db");
+const logger = require("../../utils/logging/winston");
 
 const databaseService = {
   async storeMetar(icao, metarData) {

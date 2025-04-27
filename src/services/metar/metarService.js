@@ -1,8 +1,8 @@
 const https = require("https");
-const logger = require("../utils/logging/winston");
+const logger = require("../../utils/logging/winston");
 const metarDecoder = require("./metarDecoder");
-const cacheService = require("./cacheService");
-const databaseService = require("./databaseService");
+const databaseService = require("../database/databaseService");
+const cacheService = require("../../cache/cacheService");
 
 class MetarService {
   static async fetchFromVatsim(icao) {
