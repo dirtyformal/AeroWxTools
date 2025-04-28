@@ -54,7 +54,7 @@ const logger = winston.createLogger({
           }),
         ]),
     new LokiTransport({
-      host: process.env.LOKI_HOST || "https://localhost:3100",
+      host: process.env.LOKI_HOST || "http://localhost:3100",
       json: true,
       labels: {
         job: "aerowx-tools",
