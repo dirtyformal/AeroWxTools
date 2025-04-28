@@ -1,6 +1,7 @@
 const path = require("path");
 const winston = require("winston");
 const DailyRotateFile = require("winston-daily-rotate-file");
+const LokiTransport = require("winston-loki");
 
 const logFormat = winston.format.printf(
   ({ level, message, timestamp, ...meta }) => {
@@ -52,6 +53,17 @@ const logger = winston.createLogger({
             ),
           }),
         ]),
+    new LokiTransport({
+      host: process.env.LOKI_HOST || "https://localhost:3100",
+      json: true,
+      labels: {
+        job: "aerowx-tools",
+        environment: process.env.NODE_ENV || "development",
+      },
+      batching: true,
+      interval: 5,
+      gracefulShutdown: true,
+    }),
   ],
 });
 
